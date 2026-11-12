@@ -1,6 +1,6 @@
 [project]
 name = "langgraph-preflight"
-version = "0.1.0"
+version = "0.1.1"
 description = "Check a LangGraph graph before it runs: concurrent writes to reducer-less keys, Send fan-out writes, cycles that can never exit."
 readme = "README.md"
 license = "MIT"
