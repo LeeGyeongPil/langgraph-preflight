@@ -1,0 +1,45 @@
+[project]
+name = "langgraph-preflight"
+version = "0.1.0"
+description = "Check a LangGraph graph before it runs: concurrent writes to reducer-less keys, Send fan-out writes, cycles that can never exit."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "LeeGyeongPil" }]
+keywords = ["langgraph", "lint", "static-analysis", "agents", "sarif"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = ["langgraph>=1.2.21,<2"]
+
+[project.urls]
+Homepage = "https://github.com/LeeGyeongPil/langgraph-preflight"
+Issues = "https://github.com/LeeGyeongPil/langgraph-preflight/issues"
+
+[project.scripts]
+langgraph-preflight = "langgraph_preflight.cli:run"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/langgraph_preflight"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/langgraph_preflight", "README.md", "README.ko.md", "LICENSE", "pyproject.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
