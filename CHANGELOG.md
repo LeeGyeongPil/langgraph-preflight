@@ -2,6 +2,14 @@
 
 All notable changes to this project are listed here. Format follows Keep a Changelog; versions follow SemVer.
 
+## [0.1.2] - 2026-11-14
+
+### Fixed
+- `Command(goto=["p", "q"])` with string-literal destinations is now expanded as one step where all listed nodes run together, so a same-step write to a key without a reducer is reported as LP001 (it previously passed with "No findings" while the real run raised `InvalidUpdateError`). A goto list with non-literal items is reported as LP006. Router lists (`add_conditional_edges`) behave as before.
+
+### Known issues
+- **A goto list mixing `END` constants with node-name literals is reported as LP006 instead of being expanded; the LP001 message wording "when the branches pick" is also slightly off for `Command` lists.**
+
 ## [0.1.1] - 2026-11-13
 
 ### Fixed

@@ -87,6 +87,8 @@ A closed cycle (`closed_cycle.py`) is reported with the installed default `recur
 ![LP003 for a cycle with no exit](docs/images/scene-4.png)
 *LP003: `check -> fix -> check` has only unconditional edges.*
 
+A `Command(goto=["p", "q"])` list (`command_fanout_conflict.py`) runs both nodes in one step, so it is reported as LP001 too.
+
 A clean graph passes with exit code 0:
 
 ![clean_agent sample: no findings](docs/images/scene-5.png)
@@ -101,7 +103,7 @@ A clean graph passes with exit code 0:
 | LP003 closed-cycle | error | A cycle where every way forward stays inside the cycle (unconditional edges, or all destinations in the cycle). Shows the installed default `recursion_limit` (or `unknown` if unreadable). | Add a conditional exit to `END` (for example a round counter) |
 | LP004 unreachable-node | warning (info for `Send`/`Command` targets or nodes reachable only through a route with undeclared destinations) | A node cannot be reached from `START` | Add an edge or remove the node |
 | LP005 opaque-route | warning | A conditional edge without `path_map` or a `Literal` return hint, or a node returning `Command` without a `Command[Literal[...]]` hint. An unknown name silently ends the run. | Pass a `path_map` or add the `Literal` hint |
-| LP006 analysis-gap | info | Something could not be analysed: written keys unknown, exploration truncated by `--max-states`, router returning a list of destinations | Informational; the unknown part is left out of LP001 |
+| LP006 analysis-gap | info | Something could not be analysed: written keys unknown, exploration truncated by `--max-states`, router returning a list of destinations, `Command(goto=[...])` with non-literal items | Informational; the unknown part is left out of LP001 |
 
 A cycle with a conditional way out is not reported.
 
@@ -170,7 +172,7 @@ flowchart LR
 1. The loader imports your module and takes the graph object by name. No node is executed.
 2. The model reads the compiled graph: nodes, plain edges, join edges (wait for all sources), possible destinations of conditional edges, and which state keys have a reducer.
 3. A separate pass reads each node function's source with `ast` (never `exec`) to estimate which keys it writes: dict literals, `dict(k=...)`, `Command(update=...)`, `out["k"] = ...`, `out.update(...)`. Anything else (returning the whole state, `**` spreading, helper calls, lambdas, subgraphs) is marked unknown, reported as LP006, and left out of LP001 so errors come only from keys it is sure about.
-4. A breadth-first search walks supersteps: plain edges always fire, a conditional edge or `Command` is expanded one destination at a time, and a join fires the step after all its sources finished. The shortest evidence path is kept.
+4. A breadth-first search walks supersteps: plain edges always fire, a conditional edge or a single-destination `Command` is expanded one destination at a time (a `Command` goto list literal runs all listed nodes in the same step), and a join fires the step after all its sources finished. The shortest evidence path is kept.
 5. The rules read the result. The search is possibility-based: it may report a branch combination your router never picks, so the message shows which picks are required.
 
 ## Language
@@ -186,6 +188,7 @@ uv run langgraph-preflight samples/closed_cycle.py:graph --lang ko
 - It reads LangGraph internals (`builder.edges`, `waiting_edges`, `branches`, `channels`). Supported range is `>=1.2.21,<2`; if an attribute is missing it stops with exit 2 ("unsupported langgraph version") rather than guessing. CI also runs against the newest langgraph below 2.
 - Not modelled: subgraph nodes and prebuilt `ToolNode` (treated as unknown writes), `defer=True`, `RetryPolicy`, interrupts, the functional API (`@entrypoint`), LangGraph.js.
 - Routers are assumed to pick one destination per step; a router returning a list is flagged LP006 and not expanded.
+- `Command(goto=[...])` with a list literal of node names is expanded as all of them running in the same step (so LP001 can fire); a list that is not all string literals is flagged LP006.
 - Written keys come from the `ast` patterns listed above; the rest is unknown, never guessed.
 - It does not fix your code and does not run the graph.
 
@@ -223,7 +226,7 @@ Plans can change; open an issue if one of these matters to you.
 uv run pytest -q
 ```
 
-61 tests, no network. Bugs and ideas: open an issue. Changes: [CHANGELOG.md](CHANGELOG.md).
+Tests run without network. Bugs and ideas: open an issue. Changes: [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

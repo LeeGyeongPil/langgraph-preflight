@@ -16,7 +16,7 @@ from langgraph.errors import GraphRecursionError, InvalidUpdateError
 from langgraph_preflight import check
 
 
-@pytest.mark.parametrize("name", ["fanout_conflict", "unbalanced_conflict"])
+@pytest.mark.parametrize("name", ["fanout_conflict", "unbalanced_conflict", "command_fanout_conflict"])
 def test_lp001_samples_raise_invalid_update(name: str) -> None:
     module = load_sample(name)
     assert ("LP001", "error") in rule_set(check(module.graph))

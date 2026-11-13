@@ -89,6 +89,8 @@ Send 문제는 입력 크기 뒤에 숨습니다(`send_fanout.py 1` 은 통과, 
 ![출구 없는 순환의 LP003](docs/images/scene-4.ko.png)
 *LP003: `check -> fix -> check` 는 무조건 엣지로만 이어져 있습니다.*
 
+`Command(goto=["p", "q"])` 목록(`command_fanout_conflict.py`)은 두 노드를 한 단계에 실행하므로 이것도 LP001 로 보고됩니다.
+
 깨끗한 그래프는 종료 코드 0 으로 통과합니다.
 
 ![clean_agent 예제: 발견 없음](docs/images/scene-5.ko.png)
@@ -103,7 +105,7 @@ Send 문제는 입력 크기 뒤에 숨습니다(`send_fanout.py 1` 은 통과, 
 | LP003 closed-cycle | error | 앞으로 가는 길이 모두 순환 안에 머무는 순환(무조건 엣지, 또는 가능한 목적지가 모두 순환 안). 설치된 기본 `recursion_limit` 을 표시(못 읽으면 `unknown`) | 순환 안에 `END` 로 가는 조건 출구(예: 반복 횟수 확인) 추가 |
 | LP004 unreachable-node | warning (`Send`/`Command` 대상이거나 도착지가 선언되지 않은 라우트로만 닿는 노드면 info) | `START` 에서 갈 수 없는 노드 | 엣지를 잇거나 노드 삭제 |
 | LP005 opaque-route | warning | `path_map` 도 `Literal` 반환 힌트도 없는 조건 분기, 또는 `Command[Literal[...]]` 힌트 없이 `Command` 를 돌려주는 노드. 등록 안 된 이름을 돌려주면 조용히 끝납니다. | `path_map` 을 주거나 `Literal` 힌트 추가 |
-| LP006 analysis-gap | info | 분석하지 못한 부분: 쓰는 키를 모름, `--max-states` 로 탐색이 잘림, 목적지 리스트를 돌려주는 라우터 | 참고용. 모르는 부분은 LP001 에서 빠집니다 |
+| LP006 analysis-gap | info | 분석하지 못한 부분: 쓰는 키를 모름, `--max-states` 로 탐색이 잘림, 목적지 리스트를 돌려주는 라우터, 리터럴이 아닌 원소가 든 `Command(goto=[...])` | 참고용. 모르는 부분은 LP001 에서 빠집니다 |
 
 조건 출구가 있는 순환은 보고하지 않습니다.
 
@@ -172,7 +174,7 @@ flowchart LR
 1. loader 가 모듈을 import 해 이름으로 그래프 객체를 꺼냅니다. 노드는 실행하지 않습니다.
 2. model 이 컴파일된 그래프에서 노드, 일반 엣지, join 엣지(모든 출발 노드를 기다림), 조건 분기의 가능한 목적지, 어떤 상태 키에 리듀서가 있는지를 읽습니다.
 3. 별도로 각 노드 함수의 소스를 `ast` 로 읽어(`exec` 안 함) 어떤 키에 쓰는지 추정합니다. dict 리터럴, `dict(k=...)`, `Command(update=...)`, `out["k"] = ...`, `out.update(...)` 를 인식합니다. 그 밖(상태 전체 반환, `**` 펼치기, 헬퍼 호출, lambda, 서브그래프)은 "알 수 없음"으로 LP006 에 알리고 LP001 에서는 뺍니다. 그래서 오류(error)는 확실한 키에서만 나옵니다.
-4. 너비 우선 탐색이 슈퍼스텝을 따라갑니다. 일반 엣지는 반드시 실행되고, 조건 분기와 `Command` 는 목적지를 하나씩 골라 전개하며, join 은 모든 출발 노드가 끝난 다음 단계에 실행됩니다. 가장 짧은 증거 경로를 남깁니다.
+4. 너비 우선 탐색이 슈퍼스텝을 따라갑니다. 일반 엣지는 반드시 실행되고, 조건 분기와 목적지가 하나인 `Command` 는 목적지를 하나씩 골라 전개하고(`Command` 의 goto 목록 리터럴은 나열한 노드를 같은 단계에 모두 실행), join 은 모든 출발 노드가 끝난 다음 단계에 실행됩니다. 가장 짧은 증거 경로를 남깁니다.
 5. 규칙이 그 결과를 읽습니다. 탐색은 "가능성 기반"이라 라우터가 실제로는 고르지 않는 조합을 보고할 수도 있어, 메시지에 어떤 선택이 필요한지 보여 줍니다.
 
 ## 언어
@@ -191,6 +193,7 @@ uv run langgraph-preflight samples/closed_cycle.py:graph --lang ko
 - LangGraph 내부 속성(`builder.edges`, `waiting_edges`, `branches`, `channels`)을 읽습니다. 지원 범위는 `>=1.2.21,<2` 이고, 속성이 없으면 추측하지 않고 종료 코드 2("지원하지 않는 langgraph 버전")로 멈춥니다. CI 에서는 2 미만 최신 langgraph 로도 돌립니다.
 - 모델링하지 않는 것: 서브그래프 노드와 prebuilt `ToolNode`(쓰기 키를 알 수 없음으로 처리), `defer=True`, `RetryPolicy`, interrupt, 함수형 API(`@entrypoint`), LangGraph.js.
 - 라우터는 한 단계에 목적지 하나를 고른다고 가정합니다. 리스트를 돌려주는 라우터는 LP006 으로 알리고 전개하지 않습니다.
+- `Command(goto=[...])` 에 노드 이름 리스트 리터럴이 오면 전부 같은 단계에 함께 실행되는 것으로 전개합니다(LP001 이 나올 수 있음). 문자열 리터럴이 아닌 원소가 섞인 리스트는 LP006 으로 알립니다.
 - 쓰는 키는 위에 적은 `ast` 패턴에서만 얻고, 나머지는 추측하지 않고 알 수 없음으로 둡니다.
 - 코드를 고쳐 주지 않고 그래프를 실행하지도 않습니다.
 
@@ -228,7 +231,7 @@ uv run langgraph-preflight samples/closed_cycle.py:graph --lang ko
 uv run pytest -q
 ```
 
-테스트 61개, 네트워크 불필요. 버그·제안은 이슈로 남겨 주세요. 변경 기록은 [CHANGELOG.md](CHANGELOG.md).
+테스트는 네트워크 없이 돕니다. 버그·제안은 이슈로 남겨 주세요. 변경 기록은 [CHANGELOG.md](CHANGELOG.md).
 
 ## 라이선스
 

@@ -76,6 +76,7 @@
   "lp006.unknown_writes.returns_state": "'{node}'{이/가} 쓰는 키를 알 수 없습니다. 입력 상태 전체를 돌려줍니다.",
   "lp006.unknown_writes.dynamic_return": "'{node}'{이/가} 쓰는 키를 알 수 없습니다. 다른 곳에서 만든 값을 돌려줍니다.",
   "lp006.multi_destination": "{source}에서 나가는 라우터 '{router}'{은/는} 목적지 리스트를 돌려줍니다. 단계마다 목적지 하나만 고르는 것으로 모델링합니다.",
+  "lp006.command_multi_destination": "'{node}'의 Command가 문자열 리터럴이 아닌 원소가 섞인 목적지 리스트로 이동합니다. 단계마다 목적지 하나만 고르는 것으로 모델링합니다.",
   "lp006.truncated": "상태 {max_states}개에서 탐색을 멈췄습니다. 발견이 빠졌을 수 있습니다(--max-states 를 늘리십시오).",
 
   "fix.LP001": "'{key}'에 리듀서(Annotated[list, operator.add])를 주거나 노드마다 다른 키에 쓰게 하십시오.",
@@ -84,6 +85,7 @@
   "fix.LP004": "이 노드로 가는 엣지를 추가하거나 노드를 지우십시오.",
   "fix.LP005": "add_conditional_edges 에 path_map 을 주거나 Literal[...] 반환 힌트를 다십시오.",
   "fix.lp006.truncated": "--max-states 를 늘리거나(현재 {max_states}) 그래프를 나누어 확인하십시오.",
+  "fix.lp006.command_multi_destination": "목적지를 Command(goto=[\"p\", \"q\"]) 처럼 문자열 리터럴로 쓰거나 이 노드는 직접 확인하십시오.",
   "fix.lp006.multi_destination": "목적지 리스트를 돌려주는 라우터는 직접 확인하십시오. 단계마다 하나만 고르는 것으로 모델링합니다.",
   "fix.LP006": "노드가 dict 리터럴을 돌려주게 하거나 이 부분은 직접 확인하십시오."
 }

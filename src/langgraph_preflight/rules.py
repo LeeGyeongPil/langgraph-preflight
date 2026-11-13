@@ -297,6 +297,9 @@ def check_model(model: GraphModel, max_states: int = 20000) -> list[Finding]:
         if f.unknown is not None:
             findings.append(Finding("LP006", Severity.INFO, "lp006.unknown_writes." + f.unknown, {"node": name},
                                     nodes=[name], location=f.location))
+        if f.command_goto_unmodelled:
+            findings.append(Finding("LP006", Severity.INFO, "lp006.command_multi_destination", {"node": name},
+                                    nodes=[name], location=f.location))
     for branch in model.branches:
         router = facts.get(f"router:{branch.source}:{branch.name}")
         if router and router.returns_list:
