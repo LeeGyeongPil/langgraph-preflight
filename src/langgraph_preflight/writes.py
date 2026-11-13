@@ -28,6 +28,8 @@ class SourceFacts:
     unknown: str | None = None  # 판정 불가 사유(None 이면 keys 가 전부)
     send_targets: set[str] = field(default_factory=set)  # Send("<이름>", ...) 리터럴
     command_goto: bool = False  # Command(goto=...) 를 쓴다
+    command_goto_groups: list[tuple[str, ...]] = field(default_factory=list)  # Command(goto=["p", "q"]) 묶음
+    command_goto_unmodelled: bool = False  # goto 목록에 문자열 상수가 아닌 원소가 섞임
     always_command: bool = False  # 모든 return 이 Command(goto=...)
     returns_list: bool = False  # 라우터가 목적지 리스트를 돌려준다(Send 리스트 제외)
     location: dict | None = None  # {"file": ..., "line": ...}
@@ -254,6 +256,7 @@ def analyze_function(func: object | None, runnable_kind: str = "function") -> So
                 facts.send_targets.add(target)
         if isinstance(node, ast.Call) and _call_name(node) == "Command" and _keyword(node, "goto") is not None:
             facts.command_goto = True
+            _record_goto_list(facts, _keyword(node, "goto"))
 
     resolver = _KeyResolver(fn, inspect.ismethod(func))
     returns = [n for n in _own_nodes(fn) if isinstance(n, ast.Return)]
@@ -277,6 +280,26 @@ def analyze_function(func: object | None, runnable_kind: str = "function") -> So
     ends_explicitly = bool(fn.body) and isinstance(fn.body[-1], (ast.Return, ast.Raise))
     facts.always_command = ends_explicitly and bool(returns) and all(_is_command_goto(r.value) for r in returns)
     return facts
+
+
+def _record_goto_list(facts: SourceFacts, goto: ast.expr | None) -> None:
+    """Remember a Command goto list: literal names run together in one step."""
+    if isinstance(goto, ast.ListComp):
+        if not _is_send(goto.elt):
+            facts.command_goto_unmodelled = True
+        return
+    if not isinstance(goto, (ast.List, ast.Tuple)):
+        return
+    elts = list(goto.elts)
+    if any(_is_send(e) for e in elts):
+        return  # Send 가 섞이면 기존 send_targets/LP002 경로가 맡는다
+    names = [e.value for e in elts if isinstance(e, ast.Constant) and isinstance(e.value, str)]
+    if len(names) != len(elts):
+        facts.command_goto_unmodelled = True
+        return
+    group = tuple(sorted(set(names)))
+    if len(group) >= 2 and group not in facts.command_goto_groups:
+        facts.command_goto_groups.append(group)
 
 
 def _is_command_goto(value: ast.expr | None) -> bool:

@@ -40,6 +40,7 @@ def test_every_message_id_used_in_code_exists() -> None:
         if message_id.endswith("."):
             continue
         assert message_id in en, message_id
+    assert "lp006.command_multi_destination" in en
     for reason in ("no_source", "not_function", "subgraph", "returns_state", "dynamic_return"):
         assert f"lp006.unknown_writes.{reason}" in en
 

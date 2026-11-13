@@ -76,6 +76,7 @@
   "lp006.unknown_writes.returns_state": "Keys written by '{node}' are unknown: it returns the whole input state.",
   "lp006.unknown_writes.dynamic_return": "Keys written by '{node}' are unknown: it returns a value built elsewhere.",
   "lp006.multi_destination": "Router '{router}' from {source} returns a list of destinations; only one pick per step is modelled.",
+  "lp006.command_multi_destination": "Command in '{node}' goes to a list of destinations that is not all string literals; only one pick per step is modelled.",
   "lp006.truncated": "Exploration stopped after {max_states} states; findings may be incomplete (raise --max-states).",
 
   "fix.LP001": "Give '{key}' a reducer (Annotated[list, operator.add]) or let each node write its own key.",
@@ -84,6 +85,7 @@
   "fix.LP004": "Add an edge to it or remove the node.",
   "fix.LP005": "Pass a path_map to add_conditional_edges or add a Literal[...] return hint.",
   "fix.lp006.truncated": "Raise --max-states (now {max_states}) or split the graph into smaller ones.",
+  "fix.lp006.command_multi_destination": "Write the destinations as string literals, e.g. Command(goto=[\"p\", \"q\"]), or check this node by hand.",
   "fix.lp006.multi_destination": "Check routers that return lists by hand; only one pick per step is modelled.",
   "fix.LP006": "Return a dict literal from the node or check this part by hand."
 }

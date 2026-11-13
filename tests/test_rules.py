@@ -307,3 +307,74 @@ def test_exploration_cap_is_reported() -> None:
     report = check(load_sample("clean_agent").graph, max_states=1)
     assert ("LP006", "info") in rule_set(report)
     assert any(f.message_id == "lp006.truncated" for f in report.findings)
+
+
+# --- Command(goto=[...]) fan-out ----------------------------------------------------
+
+class CS(TypedDict):
+    x: str
+
+
+class CR(TypedDict):
+    x: Annotated[list, operator.add]
+
+
+def goto_pq(state: CS) -> Command[Literal["p", "q"]]:
+    return Command(goto=["p", "q"])
+
+
+def goto_dynamic(state: CS) -> Command[Literal["p", "q"]]:
+    names = ["p", "q"]
+    return Command(goto=[n for n in names])
+
+
+def goto_mixed(state: CS) -> Command[Literal["p", "q"]]:
+    first = "p"
+    return Command(goto=[first, "q"])
+
+
+def write_p(state: CS) -> dict:
+    return {"x": "p"}
+
+
+def write_q(state: CS) -> dict:
+    return {"x": "q"}
+
+
+def write_p_list(state: CR) -> dict:
+    return {"x": ["p"]}
+
+
+def write_q_list(state: CR) -> dict:
+    return {"x": ["q"]}
+
+
+def _command_graph(schema: type, router, p, q):  # noqa: ANN001
+    g = StateGraph(schema)
+    g.add_node("r", router)
+    g.add_node("p", p)
+    g.add_node("q", q)
+    g.add_edge(START, "r")
+    return g.compile()
+
+
+def test_command_goto_list_conflict_is_lp001() -> None:
+    report = check(_command_graph(CS, goto_pq, write_p, write_q))
+    assert rule_set(report) == {("LP001", "error")}
+    (f,) = report.findings
+    assert (f.nodes, f.keys, f.step) == (["p", "q"], ["x"], 2)
+    assert f.path == ["START", "r", "{p, q}"]
+
+
+def test_command_goto_list_with_reducer_has_no_conflict() -> None:
+    report = check(_command_graph(CR, goto_pq, write_p_list, write_q_list))
+    assert report.findings == []
+
+
+def test_command_goto_non_literal_list_is_lp006() -> None:
+    for router in (goto_dynamic, goto_mixed):
+        report = check(_command_graph(CS, router, write_p, write_q))
+        assert rule_set(report) == {("LP006", "info")}
+        (f,) = report.findings
+        assert f.message_id == "lp006.command_multi_destination"
+        assert f.nodes == ["r"]

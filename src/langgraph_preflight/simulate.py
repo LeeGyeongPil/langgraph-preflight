@@ -42,9 +42,13 @@ def _fmt_set(nodes: frozenset[str]) -> str:
     return names[0] if len(names) == 1 else "{" + ", ".join(names) + "}"
 
 
-def _options(model: GraphModel, facts: dict[str, SourceFacts], node: str) -> list[list[tuple[str | None, str | None]]]:
-    """Choice groups for one node: each group lists (destination, label) and exactly one is taken."""
-    groups: list[list[tuple[str | None, str | None]]] = []
+# 선택지: (함께 활성화되는 목적지들, 증거 라벨). 목적지가 없으면 이동 없이 끝나는 경우.
+Option = tuple[tuple[str, ...], str | None]
+
+
+def _options(model: GraphModel, facts: dict[str, SourceFacts], node: str) -> list[list[Option]]:
+    """Choice groups for one node: each group lists (destinations, label) and exactly one is taken."""
+    groups: list[list[Option]] = []
     for branch in model.branches:
         if branch.source != node:
             continue
@@ -57,19 +61,23 @@ def _options(model: GraphModel, facts: dict[str, SourceFacts], node: str) -> lis
             dests = sends  # path_map 은 없지만 Send 대상은 소스에서 보인다
         if not dests:
             continue  # 목적지를 모르는 분기는 전개하지 않는다(LP005 가 따로 알린다)
-        groups.append([(None if d == END else d, f"{branch.name}@{node} -> {'END' if d == END else d}") for d in dests])
+        groups.append([((() if d == END else (d,)), f"{branch.name}@{node} -> {'END' if d == END else d}") for d in dests])
     if node in model.nodes:
         spec = model.nodes[node]
         node_facts = facts.get(node)
         dests = set(spec.ends)
         if node_facts:
             dests |= node_facts.send_targets
-        if dests:
-            group: list[tuple[str | None, str | None]] = [
-                (None if d == END else d, f"Command@{node} -> {'END' if d == END else d}") for d in sorted(dests)
+        multi = node_facts.command_goto_groups if node_facts else []
+        if dests or multi:
+            group: list[Option] = [
+                ((() if d == END else (d,)), f"Command@{node} -> {'END' if d == END else d}") for d in sorted(dests)
             ]
+            # Command(goto=["p", "q"]): 목적지 전부가 같은 단계에 함께 실행되는 선택지 하나
+            for names in multi:
+                group.append((tuple(d for d in names if d != END), f"Command@{node} -> {_fmt_set(frozenset(names))}"))
             if not (node_facts and node_facts.always_command):
-                group.append((None, None))  # Command 없이 끝나는 경우
+                group.append(((), None))  # Command 없이 끝나는 경우
             groups.append(group)
     return groups
 
@@ -93,15 +101,14 @@ def explore(model: GraphModel, facts: dict[str, SourceFacts], max_states: int = 
             elif seen:
                 new_joins[idx] = seen
         joins_key = frozenset(new_joins.items())
-        groups: list[list[tuple[str | None, str | None]]] = []
+        groups: list[list[Option]] = []
         for node in sorted(active):
             groups.extend(_options(model, facts, node))
         for picks in product(*groups):
             nxt = set(fixed)
             labels: list[str] = []
-            for dest, label in picks:
-                if dest is not None:
-                    nxt.add(dest)
+            for dests, label in picks:
+                nxt.update(dests)
                 if label is not None:
                     labels.append(label)
             yield (frozenset(nxt), joins_key), labels
