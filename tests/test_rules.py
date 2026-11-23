@@ -127,6 +127,21 @@ def test_branch_choice_conflict_reports_the_choice() -> None:
     assert "route_p_or_q@a -> p" in str(f.args["choices"])
 
 
+def test_start_branch_label_uses_start_not_internal_name() -> None:
+    g = StateGraph(S)
+    for name, fn in [("p", writes_x), ("q", noop), ("r", writes_x)]:
+        g.add_node(name, fn)
+    g.add_conditional_edges(START, route_p_or_q)
+    g.add_edge(START, "r")
+    report = check(g.compile())
+    assert rule_set(report) == {("LP001", "error")}
+    choices = str(report.findings[0].args["choices"])
+    assert "route_p_or_q@START -> p" in choices
+    assert "__start__" not in choices
+    assert "route_p_or_q@START ->" in report.findings[0].message("en")
+    assert "__start__" not in report.findings[0].message("en")
+
+
 # --- AC-3 -----------------------------------------------------------------------
 
 def stay_in_loop(state: S) -> Literal["loop", "other"]:
