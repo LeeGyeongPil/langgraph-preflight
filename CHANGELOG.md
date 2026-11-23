@@ -2,6 +2,13 @@
 
 All notable changes to this project are listed here. Format follows Keep a Changelog; versions follow SemVer.
 
+## [Unreleased]
+
+## [0.1.3] - 2026-11-24
+
+### Fixed
+- Branch evidence for `add_conditional_edges(START, ...)` now reads `route@START -> p` instead of exposing LangGraph's internal `route@__start__ -> p`.
+
 ## [0.1.2] - 2026-11-14
 
 ### Fixed
